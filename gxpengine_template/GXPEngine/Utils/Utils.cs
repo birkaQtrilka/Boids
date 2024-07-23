@@ -48,7 +48,7 @@ namespace GXPEngine
 		}
         public static float Lerp(float a, float b, float t)
         {
-            return (1 - t) * a + t * b;
+            return (b - a) * t + a;
         }
         //------------------------------------------------------------------------------------------------------------------------
         //														Random()

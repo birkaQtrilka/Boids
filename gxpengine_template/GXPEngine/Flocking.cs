@@ -1,6 +1,7 @@
 ﻿using GXPEngine;
 using GXPEngine.Core;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Net;
 
@@ -9,9 +10,13 @@ namespace gxpengine_template
 {
     class Flocking : EasyDraw
     {
+        public const float MAX_FORCE = .1f;
+
         readonly float _persceptionDistance;
         readonly Boid[] _boids;
-        public const float MAX_FORCE = .1f;
+        readonly QuadTree<Boid> _spacePartitioning;
+        readonly List<Boid> _flock = new List<Boid>();
+
 
         public Flocking(float persceptionDistance, int boidCoint) : base(Game.main.width, Game.main.height)
         {
@@ -30,14 +35,21 @@ namespace gxpengine_template
                 Vector2 randomPos = new Vector2(random.Next(0, game.width), random.Next(0, game.width));
                 _boids[i] = new Boid(randomPos, randomDir);
             }
+
+            _spacePartitioning = new QuadTree<Boid>(new BorderBox(0,0,game.width, game.height));
+            foreach (Boid boid in _boids)
+            {
+                _spacePartitioning.AddItem(boid);
+            }
         }
 
         void Update()
         {
             ClearTransparent();
-            //Fill(Color.Wheat);
-            //Text("FPS: " + game.currentFps);
+            Fill(Color.Wheat);
+            Text("FPS: " + game.currentFps);
 
+            
             //instead of these loops use a quad tree space partitioning algorithm
             for (int i = 0; i < _boids.Length; ++i)
             {
@@ -46,18 +58,15 @@ namespace gxpengine_template
                 Vector2 positionAverage = new Vector2(0,0);
                 Vector2 separationAverage = new Vector2(0,0);
 
-                int closeBoidsCount = 0;
-                for (int j = 0; j < _boids.Length; ++j)
+                _flock.Clear();
+                _spacePartitioning.Search(currBoid.Position, _persceptionDistance, _flock);//Updatet the tree somewhere
+
+                foreach (Boid checkedBoid in _flock)
                 {
-                    if (j == i) continue;
+                    if (checkedBoid == currBoid) continue;
 
-                    Boid checkedBoid = _boids[j];
                     float distance = Vector2.Distance(currBoid.OldPosition, checkedBoid.OldPosition);
-                    if (distance > _persceptionDistance) continue;
-                    if (distance == 0) distance = 0.0001f;
 
-                    closeBoidsCount++;
-                    //allignment
                     alignmentAverage += checkedBoid.OldVelocity;
                     //cohesion
                     positionAverage += checkedBoid.OldPosition;
@@ -68,6 +77,7 @@ namespace gxpengine_template
                     separationAverage += desired;
                 }
 
+                int closeBoidsCount = _flock.Count - 1; //subtract 1 cuz the current boid is included in the list
                 if (closeBoidsCount > 0) 
                 {
                     //alignment
@@ -98,6 +108,8 @@ namespace gxpengine_template
 
                 TeleportBetweenEdges(currBoid);
 
+                _spacePartitioning.Relocate(currBoid);
+                //_spacePartitioning.Update(this);
                 ColorBoidBasedOnDensity(closeBoidsCount);
 
                 currBoid.Draw(this);

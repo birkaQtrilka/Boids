@@ -1,12 +1,13 @@
 ﻿using GXPEngine;
 using GXPEngine.Core;
+using System.Collections.Generic;
 using System.Drawing;
 
 
 namespace gxpengine_template
 {
     //use this in tandem with a quad tree space partitioning algorithm
-    class Boid
+    class Boid : INodeUnit
     {
         public const float MAX_SPEED = 2f;
         
@@ -17,12 +18,17 @@ namespace gxpengine_template
         public Vector2 OldPosition { get; private set; }
         public Vector2 OldVelocity { get; private set; }
 
+        public BorderBox BoundingBox => new BorderBox(OldPosition.x, OldPosition.y, 5, 5);
+
+        public List<int> Iterator { get; } = new List<int>();
+
         public Boid(Vector2 position, Vector2 velocity) 
         {
             Position = position;
             Velocity = velocity;
             OldPosition = position;
             OldVelocity = velocity;
+
         }
 
         public void Update()
@@ -67,6 +73,11 @@ namespace gxpengine_template
             canvas.Line(backP1.x, backP1.y, backP2.x, backP2.y);
             canvas.Line(backP1.x, backP1.y, frontP.x, frontP.y);
             canvas.Line(backP2.x, backP2.y, frontP.x, frontP.y);
+        }
+
+        public void Handle(List<INodeUnit> others)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

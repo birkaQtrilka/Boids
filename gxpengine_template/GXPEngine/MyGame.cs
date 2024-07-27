@@ -9,9 +9,9 @@ namespace gxpengine_template
 {
     internal class MyGame : Game
     {
-        public MyGame() : base(900,900,false)
+        public MyGame() : base(900,750,false)
         {
-            AddChild(new Flocking(20,1000));
+            AddChild(new Flocking(25,1000));
             //AddChild(new Test());
         }
 

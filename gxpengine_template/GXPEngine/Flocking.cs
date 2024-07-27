@@ -3,7 +3,6 @@ using GXPEngine.Core;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Net;
 
 
 namespace gxpengine_template
@@ -17,6 +16,12 @@ namespace gxpengine_template
         readonly QuadTree<Boid> _spacePartitioning;
         readonly List<Boid> _flock = new List<Boid>();
 
+        struct FlockData
+        {
+            public Vector2 SeparationAverage;
+            public Vector2 PositionAverage;
+            public Vector2 AlignmentAverage;
+        }
 
         public Flocking(float persceptionDistance, int boidCoint) : base(Game.main.width, Game.main.height)
         {
@@ -38,9 +43,7 @@ namespace gxpengine_template
 
             _spacePartitioning = new QuadTree<Boid>(new BorderBox(0,0,game.width, game.height));
             foreach (Boid boid in _boids)
-            {
                 _spacePartitioning.AddItem(boid);
-            }
         }
 
         void Update()
@@ -49,71 +52,75 @@ namespace gxpengine_template
             Fill(Color.Wheat);
             Text("FPS: " + game.currentFps);
 
-            
+            int maxCount = 0;
             //instead of these loops use a quad tree space partitioning algorithm
             for (int i = 0; i < _boids.Length; ++i)
             {
                 Boid currBoid = _boids[i];
-                Vector2 alignmentAverage = new Vector2(0,0);
-                Vector2 positionAverage = new Vector2(0,0);
-                Vector2 separationAverage = new Vector2(0,0);
 
                 _flock.Clear();
-                _spacePartitioning.Search(currBoid.Position, _persceptionDistance, _flock);//Updatet the tree somewhere
+                _spacePartitioning.Search(currBoid.Position, _persceptionDistance, _flock);
 
-                foreach (Boid checkedBoid in _flock)
-                {
-                    if (checkedBoid == currBoid) continue;
+                FlockData flock = GetFlockData(_flock, currBoid);
 
-                    float distance = Vector2.Distance(currBoid.OldPosition, checkedBoid.OldPosition);
-
-                    alignmentAverage += checkedBoid.OldVelocity;
-                    //cohesion
-                    positionAverage += checkedBoid.OldPosition;
-                    //separation
-                    Vector2 desired = currBoid.Position - checkedBoid.OldPosition;
-
-                    desired /= distance;//length of vector is inversly proportional to the distance between the current and checked boid
-                    separationAverage += desired;
-                }
-
-                int closeBoidsCount = _flock.Count - 1; //subtract 1 cuz the current boid is included in the list
-                if (closeBoidsCount > 0) 
-                {
-                    //alignment
-                    alignmentAverage /= closeBoidsCount; 
-                    alignmentAverage.SetLength(Boid.MAX_SPEED);
-                    alignmentAverage -= currBoid.Velocity;
-                    alignmentAverage.Limit(MAX_FORCE);
-                    //separation
-                    separationAverage /= closeBoidsCount;
-                    separationAverage.SetLength(1.8f);
-                    separationAverage -= currBoid.Velocity;
-                    separationAverage.Limit(MAX_FORCE);
-                    //cohesion
-                    positionAverage /= closeBoidsCount;
-                    positionAverage -= currBoid.Position;
-                    positionAverage.SetLength(Boid.MAX_SPEED);
-                    positionAverage -= currBoid.Velocity;
-                    positionAverage.Limit(MAX_FORCE);
-
-                }
-
-                currBoid.Acceleration += positionAverage;
-                currBoid.Acceleration += alignmentAverage ;
-                currBoid.Acceleration += separationAverage;
+                currBoid.Acceleration += flock.PositionAverage;
+                currBoid.Acceleration += flock.AlignmentAverage;
+                currBoid.Acceleration += flock.SeparationAverage;
                 currBoid.Acceleration.Limit(MAX_FORCE);
 
                 currBoid.Update();
-
+                maxCount = Mathf.Max(maxCount, _flock.Count);
                 TeleportBetweenEdges(currBoid);
-
                 _spacePartitioning.Relocate(currBoid);
-                //_spacePartitioning.Update(this);
-                ColorBoidBasedOnDensity(closeBoidsCount);
+                ColorBoidBasedOnDensity(_flock.Count - 1);
 
                 currBoid.Draw(this);
             }
+            //_spacePartitioning.Update(this);//drawing the tree
+            Console.WriteLine(maxCount.ToString());
+        }
+
+        FlockData GetFlockData(List<Boid> flock, Boid currBoid)
+        {
+            FlockData flockData = new FlockData();
+            foreach (Boid checkedBoid in flock)
+            {
+                if (checkedBoid == currBoid) continue;
+
+                float distance = Vector2.Distance(currBoid.OldPosition, checkedBoid.OldPosition);
+
+                flockData.AlignmentAverage += checkedBoid.OldVelocity;
+                //cohesion
+                flockData.PositionAverage += checkedBoid.OldPosition;
+                //separation
+                Vector2 desired = currBoid.Position - checkedBoid.OldPosition;
+                //desired.SetLength(desired.Length() / distance);
+                desired /= distance;//length of vector is inversly proportional to the distance between the current and checked boid
+                flockData.SeparationAverage += desired;
+            }
+            int closeBoidsCount = flock.Count - 1; //subtract 1 cuz the current boid is included in the list
+            if (closeBoidsCount > 0)
+            {
+                //alignment
+                flockData.AlignmentAverage /= closeBoidsCount;
+                flockData.AlignmentAverage.SetLength(Boid.MAX_SPEED);
+                flockData.AlignmentAverage -= currBoid.Velocity;
+                flockData.AlignmentAverage.Limit(MAX_FORCE);
+                //separation
+                flockData.SeparationAverage /= closeBoidsCount;
+                flockData.SeparationAverage.SetLength(Boid.MAX_SPEED);
+                flockData.SeparationAverage -= currBoid.Velocity;
+                //flockData.SeparationAverage.Limit(MAX_FORCE);
+                //cohesion
+                flockData.PositionAverage /= closeBoidsCount;
+                flockData.PositionAverage -= currBoid.Position;
+                flockData.PositionAverage.SetLength(Boid.MAX_SPEED);
+                flockData.PositionAverage -= currBoid.Velocity;
+                flockData.PositionAverage.Limit(MAX_FORCE);
+
+            }
+
+            return flockData;
         }
 
         void ColorBoidBasedOnDensity(float density)

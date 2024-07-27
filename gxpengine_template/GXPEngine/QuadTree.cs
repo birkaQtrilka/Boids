@@ -74,7 +74,7 @@ public class QuadTree<T> where T : INodeUnit
         Add(item);
     }
 
-    public void Remove(T unit)//use the binary trick from the third episode of LOD video instead of iterator
+    public void Remove(T unit)//use the binary trick from the third episode of LOD video instead of iterator?
     {
         Remove(unit, 0);
     }
@@ -82,7 +82,7 @@ public class QuadTree<T> where T : INodeUnit
     public void Relocate(T unit)
     {
         Remove(unit);
-        //calc direction of quad to relocate into and add item more efficiently
+        //calc direction of quad to relocate into and add item more efficiently?
         AddItem(unit);
     }
 

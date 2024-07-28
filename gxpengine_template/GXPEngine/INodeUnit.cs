@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using GXPEngine.Core;
+using System.Collections.Generic;
 
 public interface INodeUnit
 {
-    BorderBox BoundingBox { get; }
+    Vector2 GetPosition();
     List<int> Iterator { get; }
 
     void Handle(List<INodeUnit> others);

@@ -8,10 +8,10 @@ using System.Text;
 using System.Threading.Tasks;
 public class QuadTree<T> where T : INodeUnit
 {
-    public const int MAX_DEPTH = 6;
+    public const int MAX_DEPTH = 4;
+    public const int CAPACITY = 7;
 
     readonly int _depth;
-    //private bool _cleared; 
 
     public BorderBox Rect { get; private set; }
 
@@ -49,25 +49,23 @@ public class QuadTree<T> where T : INodeUnit
 
     public void Clear()
     {
-        _units.Clear();
-        //_cleared = true;
 
         for (int i = 0; i < 4; i++)
         {
-            _children[i]?.Clear();
+            _children[i] = null;
         }
     }
 
-    //public int Size()
-    //{
-    //    int size = _units.Count;
-    //    for (int i = 0; i < 4; i++)
-    //    {
-    //        if (_children[i] != null) size += _children[i].Size();
-    //    }
-    //    return size;
-    //}
-    //2 0 0 3
+    public int Size()
+    {
+        int size = _units.Count;
+        for (int i = 0; i < 4; i++)
+        {
+            if (_children[i] != null) size += _children[i].Size();
+        }
+        return size;
+    }
+
     public void AddItem(T item)
     {
         item.Iterator.Clear();
@@ -76,21 +74,38 @@ public class QuadTree<T> where T : INodeUnit
 
     public void Remove(T unit)//use the binary trick from the third episode of LOD video instead of iterator?
     {
-        Remove(unit, 0);
+        QuadTree<T> housing = GetQuadrantOfUnit(unit);
+        Remove(housing, unit);
+    }
+
+    void Remove(QuadTree<T> node, T unit)
+    {
+        node._units.Remove(unit);
+        unit.Iterator.Clear();
     }
 
     public void Relocate(T unit)
     {
-        Remove(unit);
-        //calc direction of quad to relocate into and add item more efficiently?
-        AddItem(unit);
+        QuadTree<T> housing = GetQuadrantOfUnit(unit);
+
+        if (housing.Rect.Contains(unit.GetPosition())) return;
+
+        Remove(housing, unit);
+        Add(unit);
+
     }
 
-    public List<T> Search(BorderBox box)
+    QuadTree<T> GetQuadrantOfUnit(T unit)
     {
-        var results = new List<T>();
-        Search(box, results);
-        return results;
+        int index = 0;
+        QuadTree<T> housing = this;
+
+        while (index < unit.Iterator.Count)
+        {
+            housing = housing._children[unit.Iterator[index]];
+            index++;
+        }
+        return housing;
     }
 
     public List<T> Search(Vector2 circlePos, float radius)
@@ -102,84 +117,86 @@ public class QuadTree<T> where T : INodeUnit
 
     void Add(T unit)
     {
-        if (_depth + 1 >= MAX_DEPTH)//adding them untill it reaches max depth or is not contained
+        if (!IsLeaf())
         {
-            _units.Add(unit);
-            return;
-        }
-        for (int i = 0; i < 4; i++)
-        {
-            if (!_borderBoxes[i].Contains(unit.BoundingBox))
-                continue;
-            //I would call subdivide here
-            if (_children[i] == null)
-                _children[i] = new QuadTree<T>(_borderBoxes[i], _depth + 1);
-            unit.Iterator.Add(i);
-            //_cleared = false;
-            _children[i].Add(unit);
+            int quadrant = GetQuadrant(unit.GetPosition());
+            unit.Iterator.Add(quadrant);
+            _children[quadrant].Add(unit);
             return;
         }
 
         _units.Add(unit);
 
-    }
+        if (_units.Count <= CAPACITY || _depth == MAX_DEPTH) return;
+        
+        Subdivide();
 
-    void Remove(T unit, int index)//don't need ref
-    {
-        if (index < unit.Iterator.Count)
+        foreach (T currentUnit in _units)
         {
-            _children[unit.Iterator[index]].Remove(unit, ++index);
-            return;
+            int quadrant = GetQuadrant(currentUnit.GetPosition());
+            currentUnit.Iterator.Add(quadrant);
+            _children[quadrant].Add(currentUnit);
         }
-
-        _units.Remove(unit);
-        unit.Iterator.Clear();
+        _units.Clear();
     }
 
-    public void Search(BorderBox box, List<T> results)
+    void Subdivide()
     {
-        foreach (var unit in _units)
-            if (box.Overlaps(unit.BoundingBox))
-                results.Add(unit);
-
         for (int i = 0; i < 4; i++)
-        {
-            QuadTree<T> child = _children[i];
-            if (child == null /*|| child._cleared*/) continue;
+            _children[i] = new QuadTree<T>(_borderBoxes[i], _depth + 1);
+        
+    }
 
-            if (box.Contains(_borderBoxes[i]))
-                child.AppendItems(results);
-            else if (_borderBoxes[i].Overlaps(box))
-                child.Search(box, results);
+    bool IsLeaf()
+    {
+        return _children[0] == null;
+    }
+
+    int GetQuadrant(Vector2 unitPos)
+    {
+        Vector2 centerPos = new Vector2(Rect.x + Rect.w * .5f, Rect.y + Rect.h * .5f);
+        if(unitPos.x < centerPos.x)
+        {
+            if (unitPos.y < centerPos.y)
+                return 0; //up left
+            return 2; //down left
         }
+
+        if (unitPos.y < centerPos.y)
+            return 1; //up right
+        return 3; //down right
     }
 
     public void Search(Vector2 circlePos, float radius, List<T> results)
     {
-        foreach (var unit in _units)
-            if (CircleOverlapsBox(circlePos, radius, unit.BoundingBox))
-                results.Add(unit);
+        if (IsLeaf())
+        {
+            foreach (var unit in _units)
+                if (CircleContainsPoint(circlePos, radius, unit.GetPosition()))
+                    results.Add(unit);
+            return;
+        }
+        
 
         for (int i = 0; i < 4; i++)
         {
             QuadTree<T> child = _children[i];
-            if (child == null /*|| child._cleared*/) continue;
 
-            if (CircleCointainsBox(circlePos, radius, _borderBoxes[i]))
+            if (CircleContainsBox(circlePos, radius, _borderBoxes[i]))
                 child.AppendItems(results);
             else if (CircleOverlapsBox(circlePos, radius,_borderBoxes[i]))
                 child.Search(circlePos, radius, results);
         }
     }
 
-    public bool CircleCointainsBox(Vector2 pos, float radius, BorderBox box)
+    bool CircleContainsBox(Vector2 pos, float radius, BorderBox box)
     {
         float dx = Mathf.Max(Mathf.Abs(pos.x - box.x), Mathf.Abs(box.x + box.w - pos.x));
         float dy = Mathf.Max(Mathf.Abs(pos.y - box.y), Mathf.Abs(box.y + box.h - pos.y));
         return (radius * radius) >= (dx * dx) + (dy * dy);
     }
 
-    public bool CircleOverlapsBox(Vector2 pos, float radius, BorderBox box)
+    bool CircleOverlapsBox(Vector2 pos, float radius, BorderBox box)
     {
         Vector2 circleDistance = new Vector2(
             Mathf.Abs(pos.x - (box.x + box.w * .5f)),
@@ -199,16 +216,22 @@ public class QuadTree<T> where T : INodeUnit
 
     }
 
+    bool CircleContainsPoint(Vector2 pos, float radius, Vector2 point)
+    {
+        return Vector2.Distance(pos,point) <= radius;
+    }
+
     void AppendItems(List<T> otherContainer)
     {
+        if(!IsLeaf())
+        {
+            foreach (QuadTree<T> child in _children)
+                child.AppendItems(otherContainer);
+            return;
+        }
+
         foreach (var unit in _units)
             otherContainer.Add(unit);
-
-        foreach (QuadTree<T> child in _children)
-        {
-            if (child == null /*|| child._cleared*/) continue;
-            child.AppendItems(otherContainer);
-        }
     }
 
     void DrawSelf(EasyDraw canvas)

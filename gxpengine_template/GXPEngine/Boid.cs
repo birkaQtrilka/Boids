@@ -18,8 +18,6 @@ namespace gxpengine_template
         public Vector2 OldPosition { get; private set; }
         public Vector2 OldVelocity { get; private set; }
 
-        public BorderBox BoundingBox => new BorderBox(OldPosition.x, OldPosition.y, 5, 5);
-
         public List<int> Iterator { get; } = new List<int>();
 
         public Boid(Vector2 position, Vector2 velocity) 
@@ -78,6 +76,11 @@ namespace gxpengine_template
         public void Handle(List<INodeUnit> others)
         {
             throw new System.NotImplementedException();
+        }
+
+        public Vector2 GetPosition()
+        {
+            return OldPosition;
         }
     }
 }

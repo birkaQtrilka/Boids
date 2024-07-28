@@ -52,7 +52,7 @@ namespace gxpengine_template
             Fill(Color.Wheat);
             Text("FPS: " + game.currentFps);
 
-            int maxCount = 0;
+            //int maxCount = 0;
             //instead of these loops use a quad tree space partitioning algorithm
             for (int i = 0; i < _boids.Length; ++i)
             {
@@ -69,7 +69,7 @@ namespace gxpengine_template
                 currBoid.Acceleration.Limit(MAX_FORCE);
 
                 currBoid.Update();
-                maxCount = Mathf.Max(maxCount, _flock.Count);
+                //maxCount = Mathf.Max(maxCount, _flock.Count);
                 TeleportBetweenEdges(currBoid);
                 _spacePartitioning.Relocate(currBoid);
                 ColorBoidBasedOnDensity(_flock.Count - 1);
@@ -77,7 +77,7 @@ namespace gxpengine_template
                 currBoid.Draw(this);
             }
             //_spacePartitioning.Update(this);//drawing the tree
-            Console.WriteLine(maxCount.ToString());
+            //Console.WriteLine(maxCount.ToString());
         }
 
         FlockData GetFlockData(List<Boid> flock, Boid currBoid)
@@ -95,7 +95,7 @@ namespace gxpengine_template
                 //separation
                 Vector2 desired = currBoid.Position - checkedBoid.OldPosition;
                 //desired.SetLength(desired.Length() / distance);
-                desired /= distance;//length of vector is inversly proportional to the distance between the current and checked boid
+                desired /= distance * distance;//length of vector is inversly proportional to the distance between the current and checked boid
                 flockData.SeparationAverage += desired;
             }
             int closeBoidsCount = flock.Count - 1; //subtract 1 cuz the current boid is included in the list
@@ -110,7 +110,7 @@ namespace gxpengine_template
                 flockData.SeparationAverage /= closeBoidsCount;
                 flockData.SeparationAverage.SetLength(Boid.MAX_SPEED);
                 flockData.SeparationAverage -= currBoid.Velocity;
-                //flockData.SeparationAverage.Limit(MAX_FORCE);
+                flockData.SeparationAverage.Limit(MAX_FORCE);
                 //cohesion
                 flockData.PositionAverage /= closeBoidsCount;
                 flockData.PositionAverage -= currBoid.Position;
@@ -123,9 +123,9 @@ namespace gxpengine_template
             return flockData;
         }
 
-        void ColorBoidBasedOnDensity(float density)
+        void ColorBoidBasedOnDensity(float density, float maxCount = 50)
         {
-            float maxCount = 20;
+            
             float ratio = 1 - density / maxCount;
             ratio = Mathf.Clamp(ratio, 0, 1);
             Color red = Color.Red;

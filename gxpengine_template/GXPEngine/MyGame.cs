@@ -11,7 +11,7 @@ namespace gxpengine_template
     {
         public MyGame() : base(900,750,false)
         {
-            AddChild(new Flocking(25,1000));
+            AddChild(new Flocking(25,700));
             //AddChild(new Test());
         }
 

@@ -6,5 +6,4 @@ public interface INodeUnit
     Vector2 GetPosition();
     List<int> Iterator { get; }
 
-    void Handle(List<INodeUnit> others);
 }

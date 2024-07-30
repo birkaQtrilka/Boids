@@ -45,24 +45,12 @@ namespace gxpengine_template
 
         public void Draw(EasyDraw canvas)
         {
-            //canvas.Fill(Color.Wheat);
-
-
             float rotation = Velocity.GetAngleRadians() - Mathf.PI * .5f;
             Vector2 offset = Velocity.Normalized() * 15f / 3f;
 
             Vector2 backP1 = Position + Vector2.right * 4f - offset;
             Vector2 backP2 = Position + Vector2.right * -4f - offset;
             Vector2 frontP = Position + Vector2.up * 15f - offset;
-
-            //backP1.RotateRadians(rotation);
-            //backP2.RotateRadians(rotation);
-            //frontP.RotateRadians(rotation);
-
-
-            //backP1 += Position - offset;
-            //backP2 += Position - offset;
-            //frontP += Position - offset;
 
             backP1.RotateAroundRadians(rotation, Position);
             backP2.RotateAroundRadians(rotation, Position);
@@ -71,11 +59,6 @@ namespace gxpengine_template
             canvas.Line(backP1.x, backP1.y, backP2.x, backP2.y);
             canvas.Line(backP1.x, backP1.y, frontP.x, frontP.y);
             canvas.Line(backP2.x, backP2.y, frontP.x, frontP.y);
-        }
-
-        public void Handle(List<INodeUnit> others)
-        {
-            throw new System.NotImplementedException();
         }
 
         public Vector2 GetPosition()
